@@ -3,5 +3,5 @@ terraform {
 }
 
 output "fixture_control" {
-  value = "provider-free policy control"
+  value = "provider-free fork static validation control"
 }
