@@ -1,0 +1,33 @@
+name: Native approval gate negative control
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
+        with:
+          terraform_version: 1.15.7
+          terraform_wrapper: false
+      - run: terraform init -backend=false -input=false -no-color
+      - name: Observe output-only plan
+        run: |
+          python3 - <<'PY_MARKER'
+          import json, os, subprocess
+          sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+          print("VISI_TERRAFORM_TARGET=" + json.dumps({"repository":os.environ["GITHUB_REPOSITORY"],"commit":sha,"checkout_path":".","root":".","operation":"plan"},separators=(",",":")))
+          PY_MARKER
+          terraform plan -input=false -no-color
+  gated:
+    needs: plan
+    environment: fixture-approval
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    steps:
+      - run: echo "Gate control only; no Terraform apply or AWS access."

@@ -1,0 +1,26 @@
+name: Fork static validation without cloud access
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
+        with:
+          terraform_version: 1.15.7
+          terraform_wrapper: false
+      - name: Confirm no OIDC or AWS credential environment
+        run: |
+          python3 - <<'PY_CHECK'
+          import os
+          assert not any(os.environ.get(k) for k in ("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "ACTIONS_ID_TOKEN_REQUEST_URL", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"))
+          print("No OIDC request capability or AWS credentials in this controlled job.")
+          PY_CHECK
+      - run: terraform init -backend=false -input=false -no-color
+      - run: terraform validate -no-color
